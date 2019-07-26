@@ -1,0 +1,1 @@
+insert into NAVODAY_STAGING.TB_LOS_CANCELLED_PAY_REQ  (ESB_REF_NO,COMP_CODE,PROPOSAL_NO,REQ_NO,CANCEL_DATE,REASON) values (:#esbtxnid,:#compCd,:#propNo,:#reqNo,:#cancel,:#cancelReason,:#esbsource,:#createdon)

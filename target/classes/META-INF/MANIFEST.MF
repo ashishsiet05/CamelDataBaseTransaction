@@ -1,0 +1,27 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1564136640770
+Build-Jdk: 1.8.0_211
+Built-By: Ram Ashish M
+Bundle-Blueprint: OSGI-INF/blueprint/blueprint.xml,OSGI-INF/blueprint/co
+ nfiguration.xml
+Bundle-Description: PRDisbursmentRequest to insert in SME and LosPay
+Bundle-License: http://www.apache.org/licenses/LICENSE-2.0.html
+Bundle-ManifestVersion: 2
+Bundle-Name: Magma fincorp [PRDisbursmentRequest_SME]
+Bundle-SymbolicName: PRDisbursmentRequest_SME
+Bundle-Version: 1.0.0.SNAPSHOT
+Created-By: Apache Maven Bundle Plugin
+DynamicImport-Package: *
+Export-Package: com.magma.prdisbursmentrequest;uses:="javax.ws.rs,org.ap
+ ache.camel";version="1.0.0"
+Import-Package: com.magma.updateForeClosure;resolution:=optional;version
+ =0,javax.ws.rs;resolution:=optional;version=0,org.apache.activemq.camel
+ .component;resolution:=optional;version=0,org.apache.camel;resolution:=
+ optional;version=0,org.apache.camel.component.sql;resolution:=optional;
+ version=0,org.apache.camel.spring.spi;resolution:=optional;version=0,or
+ g.apache.commons.dbcp;resolution:=optional;version=0,org.apache.log4j;r
+ esolution:=optional;version=0,org.osgi.service.blueprint;version=0;reso
+ lution:=optional,org.springframework.jdbc.datasource;resolution:=option
+ al;version=0,com.mysql.jdbc;resolution:=optional;version=0
+Require-Capability: osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.8))"
+Tool: Bnd-3.2.0.201605172007

@@ -1,0 +1,3 @@
+com\magma\prdisbursmentrequest\PrdisbursmentRequestRestService.class
+com\magma\prdisbursmentrequest\ErrorAcknowledger.class
+com\magma\prdisbursmentrequest\ErrorResponse.class

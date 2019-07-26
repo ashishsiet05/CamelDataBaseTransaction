@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+    xmlns:cm="http://aries.apache.org/blueprint/xmlns/blueprint-cm/v1.1.0"
+    xmlns:cxf="http://camel.apache.org/schema/blueprint/cxf"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.osgi.org/xmlns/blueprint/v1.0.0 https://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd      http://camel.apache.org/schema/blueprint http://camel.apache.org/schema/blueprint/camel-blueprint.xsd">
+   <!--  <bean id="myDeadLetterErrorHandler" class="org.apache.camel.builder.DeadLetterChannelBuilder">
+         <property name="deadLetterUri" value="activemq:queue:MSG_FAILURES"/>
+    </bean>  -->
+    <camelContext id="PRDisbursmentRequestContext" xmlns="http://camel.apache.org/schema/blueprint">
+        <!-- Data formats Declarations -->
+        <dataFormats>
+            <json id="json" library="Jackson"/>
+        </dataFormats>
+        <!-- -->
+        <route autoStartup="true"  id="PRDisbursmentRequestRoute">
+            <from id="PRDisbursmentRequest" uri="cxfrs:bean:PRDisbursmentRequestRestEndpoint"/>
+            <transacted id="transacteddb" ref="required"/>
+            <setHeader headerName="esbtxnid" id="_setHeader1">
+                <simple>${header.esb-txnid}</simple>
+            </setHeader>
+            <to id="validateheader" uri="direct-vm:processHeader"/>
+            <choice id="headerProcessing">
+                <when id="Missingheader">
+                    <simple>${header.Error} == 'MissingHeader'</simple>
+                    <log id="_log7" message=" PRDisbursmentRequest Missisng header block one of the header  is missing "/>
+                </when>
+                <otherwise id="SuccessPath">
+                    <unmarshal id="UnamarshalLosRequest" ref="json"/>
+                    <log id="_log2" message=" PRDisbursmentRequest request recived at ${date:now:dd-yyyyy-mm hh-mm-ss} and esbsource=${in.header.esb-source} "/>
+                    <choice id="_choice1">
+                        <when id="_when1">
+                            <simple>${in.header.esb-source} == 'SME-SME'</simple>
+                            <log id="_log3" message="  PRDisbursmentRequest  you are now SME block"/>
+                            <setProperty id="_setProperty1" propertyName="Adjustment">
+                                <simple>${body[Adjustment]}</simple>
+                            </setProperty>
+                            <setBody id="MasterBody">
+                                <simple>${body[Master]}</simple>
+                            </setBody>
+                            <to id="InsertMAS" uri="sql:{{MasSqlPath}}?dataSource=CCAUATDBConnection&amp;transacted=true"/>
+                            <setBody id="AdjustmentBody">
+                                <simple>${exchangeProperty.Adjustment}</simple>
+                            </setBody>
+                            <split id="splitAdjustment" stopOnException="true">
+                                <simple>${body}</simple>
+                                <to id="InsertADJ" uri="sql:classpath:sql/Adjustment.sql?dataSource=CCAUATDBConnection&amp;transacted=true"/>
+                            </split>
+                            <removeProperty id="_removeProperty1" propertyName="Adjustment"/>
+                        </when>
+                        <when id="_when2">
+                            <simple>${in.header.esb-source} == 'SME-HFC'</simple>
+                            <log id="_log5" message="  PRDisbursmentRequest  you are now HFC block"/>
+                            <setProperty id="disburseDetail" propertyName="disburseDetail">
+                                <simple>${body[disburseDetail]}</simple>
+                            </setProperty>
+                            <setProperty id="disburseDeductionDetail" propertyName="disburseDeductionDetail">
+                                <simple>${body[disburseDeductionDetail]}</simple>
+                            </setProperty>
+                            <setBody id="disburseHeader">
+                                <simple>${body[disburseHeader]}</simple>
+                            </setBody>
+                            <to id="InsertdisburseDetail" uri="sql:{{DisburseHeaderSqlPath}}?dataSource=CCAUATDBConnection&amp;transacted=true"/>
+                            <setBody id="_setBody1">
+                                <simple>${exchangeProperty.disburseDetail}</simple>
+                            </setBody>
+                            <log id="_log6" message="  PRDisbursmentRequest  ${body}"/>
+                            <split id="InsertDis" stopOnException="true">
+                                <simple>${body}</simple>
+                                <to id="InsertDisburseDetail" uri="sql:{{DisburseDetailSqlPath}}?dataSource=CCAUATDBConnection&amp;transacted=true"/>
+                            </split>
+                            <removeProperty id="_removeProperty1" propertyName="disburseDetail"/>
+                            <setBody id="disburseDeductionDetailBody">
+                                <simple>${exchangeProperty.disburseDeductionDetail}</simple>
+                            </setBody>
+                                <split id="_split3" stopOnException="true">
+                                    <simple>${body}</simple>
+                                    <to
+                                    id="InsertdisburseDeductionDetail" uri="sql:{{DisburseDeductionDetailSqlPath}}?dataSource=CCAUATDBConnection&amp;transacted=true"/>
+                                </split>
+                        </when>
+                    </choice>
+                    <setBody id="responseBody">
+                        <simple>{"txnid":"${header.esbtxnid}","status":"request inserted successfully"}</simple>
+                    </setBody>
+                </otherwise>
+            </choice>
+             <onException id="HandleException" useOriginalMessage="true">
+                <exception>java.lang.Exception</exception>
+                <handled>
+                    <constant>true</constant>
+                </handled>
+                <log id="_log4" message=" PRDisbursment Error occured while processing request is ${exception.message} for the operation ${in.header.OperationName}"/>
+                <log id="_log1" message="after database roolback "/>
+                <setProperty id="_setProperty1" propertyName="ErrorOccured">
+                    <constant>yes</constant>
+                </setProperty>
+                <setProperty id="setExpMsg" propertyName="ExpMsg">
+                    <simple>${exception.message}</simple>
+                </setProperty>
+                <process id="processErrorResp" ref="ErrorAckProcessor"/>
+                <marshal id="MarshalErrorResponse">
+                    <json library="Jackson" prettyPrint="true"/>
+                </marshal>
+                <convertBodyTo id="ErrorReponse" type="java.lang.String"/>
+                 <rollback id="rollback" markRollbackOnly="true" message="transaction was rollback"/>
+            </onException>
+        </route> 
+        
+       <!--  <route>
+         <from uri="activemq:queue:MSG_FAILURES"/>
+        <log message="message recived ====${body}"/>
+        </route> -->
+        <!-- Route to handle Dead Letter Channel -->
+    </camelContext>
+</blueprint>
